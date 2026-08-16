@@ -5,9 +5,13 @@ const { Server } = require("socket.io");
 
 const app = express();
 
+const allowedOrigins = [
+  "http://localhost:3000",
+];
+
 app.use(
   cors({
-    origin: "http://localhost:3000",
+    origin: allowedOrigins,
   })
 );
 
@@ -17,7 +21,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
   cors: {
-    origin: "http://localhost:3000",
+    origin: allowedOrigins,
     methods: ["GET", "POST"],
   },
 });
@@ -158,7 +162,7 @@ io.on("connection", (socket) => {
 });
 
 
-const PORT = 4000;
+const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, () => {
   console.log(
