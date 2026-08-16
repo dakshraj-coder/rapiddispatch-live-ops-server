@@ -65,6 +65,7 @@ const tickets = [
   },
 ];
 
+// Health check
 app.get("/", (req, res) => {
   res.json({
     message: "RapidDispatch Live Ops Server is running",
@@ -107,7 +108,7 @@ io.on("connection", (socket) => {
 
     console.log(`Ticket #${ticketId} locked by ${agentName}`);
 
-    // Broadcast to ALL connected clients
+    // Broadcast lock to every connected client
     io.emit("ticket_locked", {
       ticketId,
       agentName,
@@ -133,41 +134,50 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Remove the lock
     lockedTickets.delete(ticketId);
 
     console.log(`Ticket #${ticketId} unlocked`);
 
-    // Tell every connected client
+    // Broadcast unlock to every connected client
     io.emit("ticket_unlocked", {
       ticketId,
     });
   });
 
-  // Disconnect handler
-  socket.on("disconnect", () => {
+  // Ghost disconnect handler
+  socket.on("disconnect", (reason) => {
     console.log(`Agent disconnected: ${socket.id}`);
-    // Find all tickets locked by this socket
+    console.log(`Disconnect reason: ${reason}`);
+
+    const releasedTickets = [];
+
+    // Find every ticket locked by this socket
     for (const [ticketId, lock] of lockedTickets.entries()) {
       if (lock.socketId === socket.id) {
         lockedTickets.delete(ticketId);
-        console.log(
-          `Ticket #${ticketId} automatically unlocked because the agent disconnected`
-        );
-        // Tell every remaining client that the ticket is available
-        io.emit("ticket_unlocked", {
-          ticketId,
-        });
+        releasedTickets.push(ticketId);
       }
     }
+
+    // Broadcast unlock for every released ticket
+    for (const ticketId of releasedTickets) {
+      console.log(
+        `Ticket #${ticketId} automatically unlocked because ${socket.id} disconnected`
+      );
+
+      io.emit("ticket_unlocked", {
+        ticketId,
+      });
+    }
+
+    console.log(
+      `Released ${releasedTickets.length} ticket(s) for disconnected agent`
+    );
   });
 });
-
 
 const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, () => {
-  console.log(
-    `RapidDispatch server running on http://localhost:${PORT}`
-  );
+  console.log(`RapidDispatch server running on port ${PORT}`);
 });
