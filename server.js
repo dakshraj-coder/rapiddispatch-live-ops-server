@@ -7,6 +7,7 @@ const app = express();
 
 const allowedOrigins = [
   "http://localhost:3000",
+  "https://rapiddispatch-live-ops-sigma.vercel.app",
 ];
 
 app.use(
